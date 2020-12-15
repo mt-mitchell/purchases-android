@@ -1,13 +1,15 @@
 package com.revenuecat.purchases.common
 
 import android.content.Context
+import com.revenuecat.purchases.Store
 import java.net.URL
 
 class AppConfig(
     context: Context,
     observerMode: Boolean,
     val platformInfo: PlatformInfo,
-    proxyURL: URL?
+    proxyURL: URL?,
+    val store: Store
 ) {
 
     val languageTag: String = context.getLocale()?.toBCP47() ?: ""
