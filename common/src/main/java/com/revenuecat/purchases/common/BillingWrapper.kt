@@ -29,31 +29,14 @@ import java.util.concurrent.ConcurrentLinkedQueue
 class BillingWrapper(
     private val clientFactory: ClientFactory,
     private val mainHandler: Handler
-) : PurchasesUpdatedListener, BillingClientStateListener {
+) : BillingAbstract(), PurchasesUpdatedListener, BillingClientStateListener {
 
-    @get:Synchronized
-    @set:Synchronized
-    @Volatile
-    var stateListener: StateListener? = null
 
     @get:Synchronized
     @set:Synchronized
     @Volatile
     var billingClient: BillingClient? = null
 
-    @get:Synchronized
-    @Volatile
-    var purchasesUpdatedListener: PurchasesUpdatedListener? = null
-        set(value) {
-            synchronized(this@BillingWrapper) {
-                field = value
-            }
-            if (value != null) {
-                startConnection()
-            } else {
-                endConnection()
-            }
-        }
 
     private val productTypes = mutableMapOf<String, PurchaseType>()
     private val presentedOfferingsByProductIdentifier = mutableMapOf<String, String?>()
@@ -78,10 +61,6 @@ class BillingWrapper(
         )
     }
 
-    interface StateListener {
-        fun onConnected()
-    }
-
     private fun executePendingRequests() {
         synchronized(this@BillingWrapper) {
             while (billingClient?.isReady == true && !serviceRequests.isEmpty()) {
@@ -90,7 +69,7 @@ class BillingWrapper(
         }
     }
 
-    private fun startConnection() {
+    override fun startConnection() {
         mainHandler.post {
             synchronized(this@BillingWrapper) {
                 if (billingClient == null) {
@@ -104,7 +83,7 @@ class BillingWrapper(
         }
     }
 
-    private fun endConnection() {
+    override fun endConnection() {
         mainHandler.post {
             synchronized(this@BillingWrapper) {
                 billingClient?.let {
@@ -128,7 +107,7 @@ class BillingWrapper(
         }
     }
 
-    fun querySkuDetailsAsync(
+    override fun querySkuDetailsAsync(
         @BillingClient.SkuType itemType: String,
         skuList: List<String>,
         onReceiveSkuDetails: (List<SkuDetails>) -> Unit,
@@ -165,7 +144,7 @@ class BillingWrapper(
         }
     }
 
-    fun makePurchaseAsync(
+    override fun makePurchaseAsync(
         activity: Activity,
         appUserID: String,
         skuDetails: SkuDetails,
@@ -243,7 +222,7 @@ class BillingWrapper(
         }
     }
 
-    fun queryAllPurchases(
+    override fun queryAllPurchases(
         onReceivePurchaseHistory: (List<PurchaseHistoryRecordWrapper>) -> Unit,
         onReceivePurchaseHistoryError: (PurchasesError) -> Unit
     ) {
@@ -275,7 +254,7 @@ class BillingWrapper(
         )
     }
 
-    fun consumePurchase(
+    override fun consumePurchase(
         token: String,
         onConsumed: (billingResult: BillingResult, purchaseToken: String) -> Unit
     ) {
@@ -291,7 +270,7 @@ class BillingWrapper(
         }
     }
 
-    fun acknowledge(
+    override fun acknowledge(
         token: String,
         onAcknowledged: (billingResult: BillingResult, purchaseToken: String) -> Unit
     ) {
@@ -316,7 +295,7 @@ class BillingWrapper(
         fun isSuccessful(): Boolean = responseCode == BillingClient.BillingResponseCode.OK
     }
 
-    fun queryPurchases(@SkuType skuType: String): QueryPurchasesResult? {
+    override fun queryPurchases(@SkuType skuType: String): QueryPurchasesResult? {
         return billingClient?.let { billingClient ->
             debugLog("[QueryPurchases] Querying $skuType")
             val result = billingClient.queryPurchases(skuType)
@@ -334,7 +313,7 @@ class BillingWrapper(
         }
     }
 
-    fun findPurchaseInPurchaseHistory(
+    override fun findPurchaseInPurchaseHistory(
         @SkuType skuType: String,
         sku: String,
         completion: (BillingResult, PurchaseHistoryRecordWrapper?) -> Unit
@@ -465,7 +444,7 @@ class BillingWrapper(
         debugLog("Billing Service disconnected for ${billingClient?.toString()}")
     }
 
-    fun isConnected(): Boolean = billingClient?.isReady ?: false
+    override fun isConnected(): Boolean = billingClient?.isReady ?: false
 
     private fun withConnectedClient(receivingFunction: BillingClient.() -> Unit) {
         billingClient?.takeIf { it.isReady }?.let {

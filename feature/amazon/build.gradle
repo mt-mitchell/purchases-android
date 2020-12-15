@@ -2,8 +2,10 @@ apply from: "$rootProject.projectDir/library.gradle"
 
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
+    implementation files('libs/in-app-purchasing-2.0.76.jar')
 
     implementation project(path: ':purchases')
+    implementation project(path: ':common')
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
 }

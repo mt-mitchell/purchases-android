@@ -23,6 +23,7 @@ import com.android.billingclient.api.Purchase
 import com.android.billingclient.api.SkuDetails
 import com.revenuecat.purchases.common.AppConfig
 import com.revenuecat.purchases.common.Backend
+import com.revenuecat.purchases.common.BillingAbstract
 import com.revenuecat.purchases.common.BillingWrapper
 import com.revenuecat.purchases.common.Config
 import com.revenuecat.purchases.common.Dispatcher
@@ -86,7 +87,7 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
     private val application: Application,
     backingFieldAppUserID: String?,
     private val backend: Backend,
-    private val billingWrapper: BillingWrapper,
+    private val billing: BillingAbstract,
     private val deviceCache: DeviceCache,
     private val dispatcher: Dispatcher,
     private val identityManager: IdentityManager,
@@ -161,12 +162,12 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
         debugLog("Initial App User ID - $backingFieldAppUserID")
         identityManager.configure(backingFieldAppUserID)
         ProcessLifecycleOwner.get().lifecycle.addObserver(lifecycleHandler)
-        billingWrapper.stateListener = object : BillingWrapper.StateListener {
+        billing.stateListener = object : BillingAbstract.StateListener {
             override fun onConnected() {
                 updatePendingPurchaseQueue()
             }
         }
-        billingWrapper.purchasesUpdatedListener = getPurchasesUpdatedListener()
+        billing.purchasesUpdatedListener = getPurchasesUpdatedListener()
     }
 
     /** @suppress */
@@ -208,7 +209,7 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
      */
     fun syncPurchases() {
         debugLog("Syncing purchases")
-        billingWrapper.queryAllPurchases({ allPurchases ->
+        billing.queryAllPurchases({ allPurchases ->
             if (allPurchases.isNotEmpty()) {
                 identityManager.currentAppUserID.let { appUserID ->
                     allPurchases.forEach { purchase ->
@@ -486,7 +487,7 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
                 "Are you sure you want to do this?")
         }
         this.finishTransactions.let { finishTransactions ->
-            billingWrapper.queryAllPurchases(
+            billing.queryAllPurchases(
                 { allPurchases ->
                     if (allPurchases.isEmpty()) {
                         getPurchaserInfo(listener)
@@ -625,7 +626,7 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
             state = state.copy(purchaseCallbacks = emptyMap())
         }
         this.backend.close()
-        billingWrapper.purchasesUpdatedListener = null
+        billing.purchasesUpdatedListener = null
         updatedPurchaserInfoListener = null // Do not call on state since the setter does more stuff
         ProcessLifecycleOwner.get().lifecycle.removeObserver(lifecycleHandler)
     }
@@ -1058,7 +1059,7 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
         @BillingClient.SkuType skuType: String,
         completion: GetSkusResponseListener
     ) {
-        billingWrapper.querySkuDetailsAsync(
+        billing.querySkuDetailsAsync(
             skuType,
             skus,
             { skuDetails ->
@@ -1118,7 +1119,7 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
     ) {
         purchases.forEach { purchase ->
             if (purchase.containedPurchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
-                billingWrapper.querySkuDetailsAsync(
+                billing.querySkuDetailsAsync(
                     itemType = purchase.type.toSKUType() ?: BillingClient.SkuType.INAPP,
                     skuList = listOf(purchase.sku),
                     onReceiveSkuDetails = { skuDetailsList ->
@@ -1216,7 +1217,7 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
             return
         }
         if (shouldTryToConsume && purchase.isConsumable) {
-            billingWrapper.consumePurchase(purchase.purchaseToken) { billingResult, purchaseToken ->
+            billing.consumePurchase(purchase.purchaseToken) { billingResult, purchaseToken ->
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                     deviceCache.addSuccessfullyPostedToken(purchaseToken)
                 } else {
@@ -1225,7 +1226,7 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
                 }
             }
         } else if (shouldTryToConsume && !purchase.containedPurchase.isAcknowledged) {
-            billingWrapper.acknowledge(purchase.purchaseToken) { billingResult, purchaseToken ->
+            billing.acknowledge(purchase.purchaseToken) { billingResult, purchaseToken ->
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                     deviceCache.addSuccessfullyPostedToken(purchaseToken)
                 } else {
@@ -1248,7 +1249,7 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
             return
         }
         if (shouldTryToConsume && purchase.isConsumable) {
-            billingWrapper.consumePurchase(purchase.purchaseToken) { billingResult, purchaseToken ->
+            billing.consumePurchase(purchase.purchaseToken) { billingResult, purchaseToken ->
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                     deviceCache.addSuccessfullyPostedToken(purchaseToken)
                 } else {
@@ -1257,7 +1258,7 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
                 }
             }
         } else if (shouldTryToConsume) {
-            billingWrapper.acknowledge(purchase.purchaseToken) { billingResult, purchaseToken ->
+            billing.acknowledge(purchase.purchaseToken) { billingResult, purchaseToken ->
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                     deviceCache.addSuccessfullyPostedToken(purchaseToken)
                 } else {
@@ -1275,7 +1276,7 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
         onCompleted: (HashMap<String, SkuDetails>) -> Unit,
         onError: (PurchasesError) -> Unit
     ) {
-        billingWrapper.querySkuDetailsAsync(
+        billing.querySkuDetailsAsync(
             BillingClient.SkuType.SUBS,
             skus,
             { subscriptionsSKUDetails ->
@@ -1287,7 +1288,7 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
                         .map { skuToDetails -> skuToDetails.first }
 
                 if (inAPPSkus.isNotEmpty()) {
-                    billingWrapper.querySkuDetailsAsync(
+                    billing.querySkuDetailsAsync(
                         BillingClient.SkuType.INAPP,
                         inAPPSkus,
                         { skuDetails ->
@@ -1482,7 +1483,7 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
             }
         }
         userPurchasing?.let { appUserID ->
-            billingWrapper.makePurchaseAsync(
+            billing.makePurchaseAsync(
                 activity,
                 appUserID,
                 product,
@@ -1536,11 +1537,11 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
         presentedOfferingIdentifier: String?,
         listener: PurchaseErrorListener
     ) {
-        billingWrapper.findPurchaseInPurchaseHistory(product.type, upgradeInfo.oldSku) { result, purchaseRecord ->
+        billing.findPurchaseInPurchaseHistory(product.type, upgradeInfo.oldSku) { result, purchaseRecord ->
             if (result.isSuccessful()) {
                 if (purchaseRecord != null) {
                     debugLog("Found existing purchase for sku: ${upgradeInfo.oldSku}")
-                    billingWrapper.makePurchaseAsync(
+                    billing.makePurchaseAsync(
                         activity,
                         appUserID,
                         product,
@@ -1572,13 +1573,13 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
 
     @JvmSynthetic
     internal fun updatePendingPurchaseQueue() {
-        if (billingWrapper.isConnected()) {
+        if (billing.isConnected()) {
             debugLog("[QueryPurchases] Updating pending purchase queue")
             dispatcher.enqueue(Runnable {
                 val queryActiveSubscriptionsResult =
-                    billingWrapper.queryPurchases(BillingClient.SkuType.SUBS)
+                    billing.queryPurchases(BillingClient.SkuType.SUBS)
                 val queryUnconsumedInAppsRequest =
-                    billingWrapper.queryPurchases(BillingClient.SkuType.INAPP)
+                    billing.queryPurchases(BillingClient.SkuType.INAPP)
                 if (queryActiveSubscriptionsResult?.isSuccessful() == true &&
                     queryUnconsumedInAppsRequest?.isSuccessful() == true
                 ) {
@@ -1728,7 +1729,7 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
                     observerMode,
                     platformInfo,
                     proxyURL,
-                    configuration.store
+                    store
                 )
 
                 val dispatcher = Dispatcher(service ?: createDefaultExecutor())
@@ -1739,10 +1740,22 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
                 )
                 val subscriberAttributesPoster = SubscriberAttributesPoster(backend)
 
+                var billing: BillingAbstract? = null
                 val billingWrapper = BillingWrapper(
                     BillingWrapper.ClientFactory(application),
                     Handler(application.mainLooper)
                 )
+                if (store == Store.PLAY_STORE) {
+
+                } else if (store == Store.AMAZON) {
+                    try {
+                        billing = Class.forName("com.revenuecat.purchases.amazon.AmazonBilling").newInstance() as BillingAbstract?
+                    } catch (e: ClassNotFoundException) {
+                        errorLog("Make sure purchases-amazon is added as dependency")
+                    }
+                }
+
+
 
                 val prefs = PreferenceManager.getDefaultSharedPreferences(application)
                 val cache = DeviceCache(prefs, apiKey)
