@@ -31,12 +31,10 @@ class BillingWrapper(
     private val mainHandler: Handler
 ) : BillingAbstract(), PurchasesUpdatedListener, BillingClientStateListener {
 
-
     @get:Synchronized
     @set:Synchronized
     @Volatile
     var billingClient: BillingClient? = null
-
 
     private val productTypes = mutableMapOf<String, PurchaseType>()
     private val presentedOfferingsByProductIdentifier = mutableMapOf<String, String?>()
@@ -147,34 +145,35 @@ class BillingWrapper(
     override fun makePurchaseAsync(
         activity: Activity,
         appUserID: String,
-        skuDetails: SkuDetails,
-        replaceSkuInfo: ReplaceSkuInfo?,
-        presentedOfferingIdentifier: String?
+        productInfo: ProductInfo,
+        replaceSkuInfo: ReplaceSkuInfo?
     ) {
-        if (replaceSkuInfo != null) {
-            debugLog("Moving from old sku ${replaceSkuInfo.oldPurchase.sku} to sku ${skuDetails.sku}")
-        } else {
-            debugLog("Making purchase for sku: ${skuDetails.sku}")
-        }
-        synchronized(this@BillingWrapper) {
-            productTypes[skuDetails.sku] = PurchaseType.fromSKUType(skuDetails.type)
-            presentedOfferingsByProductIdentifier[skuDetails.sku] = presentedOfferingIdentifier
-        }
-        executeRequestOnUIThread {
-            val params = BillingFlowParams.newBuilder()
-                .setSkuDetails(skuDetails)
-                // Causing issues with downgrades/upgrades https://issuetracker.google.com/issues/155005449
-                // .setObfuscatedAccountId(appUserID.sha256())
-                .apply {
-                    replaceSkuInfo?.apply {
-                        setOldSku(oldPurchase.sku, oldPurchase.purchaseToken)
-                        prorationMode?.let { prorationMode ->
-                            setReplaceSkusProrationMode(prorationMode)
+        productInfo.skuDetails?.let { skuDetails ->
+            if (replaceSkuInfo != null) {
+                debugLog("Moving from old sku ${replaceSkuInfo.oldPurchase.sku} to sku ${skuDetails.sku}")
+            } else {
+                debugLog("Making purchase for sku: $productInfo")
+            }
+            synchronized(this@BillingWrapper) {
+                productTypes[skuDetails.sku] = PurchaseType.fromSKUType(skuDetails.type)
+                presentedOfferingsByProductIdentifier[skuDetails.sku] = productInfo.offeringIdentifier
+            }
+            executeRequestOnUIThread {
+                val params = BillingFlowParams.newBuilder()
+                    .setSkuDetails(skuDetails)
+                    // Causing issues with downgrades/upgrades https://issuetracker.google.com/issues/155005449
+                    // .setObfuscatedAccountId(appUserID.sha256())
+                    .apply {
+                        replaceSkuInfo?.apply {
+                            setOldSku(oldPurchase.sku, oldPurchase.purchaseToken)
+                            prorationMode?.let { prorationMode ->
+                                setReplaceSkusProrationMode(prorationMode)
+                            }
                         }
-                    }
-                }.build()
+                    }.build()
 
-            launchBillingFlow(activity, params)
+                launchBillingFlow(activity, params)
+            }
         }
     }
 
@@ -185,7 +184,7 @@ class BillingWrapper(
     ) {
         withConnectedClient {
             launchBillingFlow(activity, params)
-                .takeIf { billingResult -> billingResult?.responseCode != BillingClient.BillingResponseCode.OK }
+                .takeIf { billingResult -> billingResult.responseCode != BillingClient.BillingResponseCode.OK }
                 ?.let { billingResult ->
                     infoLog("Failed to launch billing intent. ${billingResult.toHumanReadableDescription()}")
                 }

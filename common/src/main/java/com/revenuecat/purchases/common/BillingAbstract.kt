@@ -66,9 +66,8 @@ abstract class BillingAbstract {
     abstract fun makePurchaseAsync(
         activity: Activity,
         appUserID: String,
-        skuDetails: SkuDetails,
-        replaceSkuInfo: ReplaceSkuInfo?,
-        presentedOfferingIdentifier: String?
+        productInfo: ProductInfo,
+        replaceSkuInfo: ReplaceSkuInfo?
     )
 
     abstract fun isConnected(): Boolean
@@ -76,5 +75,4 @@ abstract class BillingAbstract {
     abstract fun queryPurchases(
         @BillingClient.SkuType skuType: String
     ): BillingWrapper.QueryPurchasesResult?
-
 }

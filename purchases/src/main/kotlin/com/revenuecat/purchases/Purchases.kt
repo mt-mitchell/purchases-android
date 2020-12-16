@@ -332,10 +332,10 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
         upgradeInfo: UpgradeInfo,
         listener: MakePurchaseListener
     ) {
+        val productInfo = ProductInfo(skuDetails.sku, null, skuDetails)
         startProductChange(
             activity,
-            skuDetails,
-            null,
+            productInfo,
             upgradeInfo,
             listener.toProductChangeListener()
         )
@@ -347,10 +347,10 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
         upgradeInfo: UpgradeInfo,
         listener: ProductChangeListener
     ) {
+        val productInfo = ProductInfo(skuDetails.sku, null, skuDetails)
         startProductChange(
             activity,
-            skuDetails,
-            null,
+            productInfo,
             upgradeInfo,
             listener
         )
@@ -367,7 +367,8 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
         skuDetails: SkuDetails,
         listener: MakePurchaseListener
     ) {
-        startPurchase(activity, skuDetails, null, listener)
+        val productInfo = ProductInfo(skuDetails.sku, null, skuDetails)
+        startPurchase(activity, productInfo, listener)
     }
 
     /**
@@ -392,10 +393,14 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
         upgradeInfo: UpgradeInfo,
         listener: MakePurchaseListener
     ) {
+        val productInfo = ProductInfo(
+            packageToPurchase.product.sku,
+            packageToPurchase.offering,
+            packageToPurchase.product
+        )
         startProductChange(
             activity,
-            packageToPurchase.product,
-            packageToPurchase.offering,
+            productInfo,
             upgradeInfo,
             listener.toProductChangeListener()
         )
@@ -437,10 +442,15 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
         upgradeInfo: UpgradeInfo,
         listener: ProductChangeListener
     ) {
+        val productInfo = ProductInfo(
+            packageToPurchase.product.sku,
+            packageToPurchase.offering,
+            packageToPurchase.product
+        )
+
         startProductChange(
             activity,
-            packageToPurchase.product,
-            packageToPurchase.offering,
+            productInfo,
             upgradeInfo,
             listener
         )
@@ -457,10 +467,15 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
         packageToPurchase: Package,
         listener: MakePurchaseListener
     ) {
+        val productInfo = ProductInfo(
+            packageToPurchase.product.sku,
+            packageToPurchase.offering,
+            packageToPurchase.product
+        )
+
         startPurchase(
             activity,
-            packageToPurchase.product,
-            packageToPurchase.offering,
+            productInfo,
             listener
         )
     }
@@ -482,9 +497,11 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
     ) {
         debugLog("Restoring purchases")
         if (!allowSharingPlayStoreAccount) {
-            debugLog("allowSharingPlayStoreAccount is set to false and restorePurchases" +
-                " has been called. This will 'alias' any app user id's sharing the same receipt. " +
-                "Are you sure you want to do this?")
+            debugLog(
+                "allowSharingPlayStoreAccount is set to false and restorePurchases" +
+                    " has been called. This will 'alias' any app user id's sharing the same receipt. " +
+                    "Are you sure you want to do this?"
+            )
         }
         this.finishTransactions.let { finishTransactions ->
             billing.queryAllPurchases(
@@ -1221,8 +1238,10 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                     deviceCache.addSuccessfullyPostedToken(purchaseToken)
                 } else {
-                    debugLog("Error consuming purchase. Will retry next queryPurchases. " +
-                        "${billingResult.toHumanReadableDescription()}")
+                    debugLog(
+                        "Error consuming purchase. Will retry next queryPurchases. " +
+                            "${billingResult.toHumanReadableDescription()}"
+                    )
                 }
             }
         } else if (shouldTryToConsume && !purchase.containedPurchase.isAcknowledged) {
@@ -1230,8 +1249,10 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                     deviceCache.addSuccessfullyPostedToken(purchaseToken)
                 } else {
-                    debugLog("Error acknowledging purchase. Will retry next queryPurchases. " +
-                        "${billingResult.toHumanReadableDescription()}")
+                    debugLog(
+                        "Error acknowledging purchase. Will retry next queryPurchases. " +
+                            "${billingResult.toHumanReadableDescription()}"
+                    )
                 }
             }
         } else {
@@ -1253,8 +1274,10 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                     deviceCache.addSuccessfullyPostedToken(purchaseToken)
                 } else {
-                    debugLog("Error consuming purchase. Will retry next queryPurchases. " +
-                        "${billingResult.toHumanReadableDescription()}")
+                    debugLog(
+                        "Error consuming purchase. Will retry next queryPurchases. " +
+                            "${billingResult.toHumanReadableDescription()}"
+                    )
                 }
             }
         } else if (shouldTryToConsume) {
@@ -1262,8 +1285,10 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                     deviceCache.addSuccessfullyPostedToken(purchaseToken)
                 } else {
-                    debugLog("Error acknowledging purchase. Will retry next queryPurchases. " +
-                        "${billingResult.toHumanReadableDescription()}")
+                    debugLog(
+                        "Error acknowledging purchase. Will retry next queryPurchases. " +
+                            "${billingResult.toHumanReadableDescription()}"
+                    )
                 }
             }
         } else {
@@ -1460,24 +1485,28 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
 
     private fun startPurchase(
         activity: Activity,
-        product: SkuDetails,
-        presentedOfferingIdentifier: String?,
+        productInfo: ProductInfo,
         listener: MakePurchaseListener
     ) {
-        debugLog("purchase started - product:" +
-            " $product ${presentedOfferingIdentifier?.let {
-                " - offering: $presentedOfferingIdentifier"
-            }}"
+        debugLog(
+            "purchase started - product:" +
+                " ${productInfo.skuDetails} ${
+                    productInfo.offeringIdentifier?.let {
+                        " - offering: $it"
+                    }
+                }"
         )
         var userPurchasing: String? = null // Avoids race condition for userid being modified before purchase is made
         synchronized(this@Purchases) {
             if (!appConfig.finishTransactions) {
-                debugLog("finishTransactions is set to false and a purchase has been started. " +
-                    "Are you sure you want to do this?")
+                debugLog(
+                    "finishTransactions is set to false and a purchase has been started. " +
+                        "Are you sure you want to do this?"
+                )
             }
-            if (!state.purchaseCallbacks.containsKey(product.sku)) {
+            if (!state.purchaseCallbacks.containsKey(productInfo.productID)) {
                 state = state.copy(
-                    purchaseCallbacks = state.purchaseCallbacks + mapOf(product.sku to listener)
+                    purchaseCallbacks = state.purchaseCallbacks + mapOf(productInfo.productID to listener)
                 )
                 userPurchasing = identityManager.currentAppUserID
             }
@@ -1486,31 +1515,34 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
             billing.makePurchaseAsync(
                 activity,
                 appUserID,
-                product,
-                null,
-                presentedOfferingIdentifier
+                productInfo,
+                null
             )
         } ?: listener.dispatch(PurchasesError(PurchasesErrorCode.OperationAlreadyInProgressError).also { errorLog(it) })
     }
 
     private fun startProductChange(
         activity: Activity,
-        product: SkuDetails,
-        presentedOfferingIdentifier: String?,
+        productInfo: ProductInfo,
         upgradeInfo: UpgradeInfo,
         listener: ProductChangeListener
     ) {
-        debugLog("product change started:" +
-            " $product ${presentedOfferingIdentifier?.let {
-                " - offering: $presentedOfferingIdentifier"
-            }} UpgradeInfo: $upgradeInfo"
+        debugLog(
+            "product change started:" +
+                " ${productInfo.skuDetails} ${
+                    productInfo.offeringIdentifier?.let {
+                        " - offering: $productInfo.offeringIdentifier"
+                    }
+                } UpgradeInfo: $upgradeInfo"
         )
 
         var userPurchasing: String? = null // Avoids race condition for userid being modified before purchase is made
         synchronized(this@Purchases) {
             if (!appConfig.finishTransactions) {
-                debugLog("finishTransactions is set to false and a purchase has been started. " +
-                    "Are you sure you want to do this?")
+                debugLog(
+                    "finishTransactions is set to false and a purchase has been started. " +
+                        "Are you sure you want to do this?"
+                )
             }
             if (state.productChangeCallback == null) {
                 state = state.copy(productChangeCallback = listener)
@@ -1519,53 +1551,52 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
         }
         userPurchasing?.let { appUserID ->
             replaceOldPurchaseWithNewProduct(
-                product,
+                productInfo,
                 upgradeInfo,
                 activity,
                 appUserID,
-                presentedOfferingIdentifier,
                 listener
             )
         } ?: listener.dispatch(PurchasesError(PurchasesErrorCode.OperationAlreadyInProgressError).also { errorLog(it) })
     }
 
     private fun replaceOldPurchaseWithNewProduct(
-        product: SkuDetails,
+        productInfo: ProductInfo,
         upgradeInfo: UpgradeInfo,
         activity: Activity,
         appUserID: String,
-        presentedOfferingIdentifier: String?,
         listener: PurchaseErrorListener
     ) {
-        billing.findPurchaseInPurchaseHistory(product.type, upgradeInfo.oldSku) { result, purchaseRecord ->
-            if (result.isSuccessful()) {
-                if (purchaseRecord != null) {
-                    debugLog("Found existing purchase for sku: ${upgradeInfo.oldSku}")
-                    billing.makePurchaseAsync(
-                        activity,
-                        appUserID,
-                        product,
-                        ReplaceSkuInfo(purchaseRecord, upgradeInfo.prorationMode),
-                        presentedOfferingIdentifier
-                    )
+        productInfo.skuDetails?.let { product ->
+            billing.findPurchaseInPurchaseHistory(product.type, upgradeInfo.oldSku) { result, purchaseRecord ->
+                if (result.isSuccessful()) {
+                    if (purchaseRecord != null) {
+                        debugLog("Found existing purchase for sku: ${upgradeInfo.oldSku}")
+                        billing.makePurchaseAsync(
+                            activity,
+                            appUserID,
+                            productInfo,
+                            ReplaceSkuInfo(purchaseRecord, upgradeInfo.prorationMode)
+                        )
+                    } else {
+                        debugLog("Couldn't find existing purchase for sku: ${upgradeInfo.oldSku}")
+                        dispatch {
+                            listener.onError(
+                                PurchasesError(PurchasesErrorCode.PurchaseInvalidError).also { errorLog(it) },
+                                false
+                            )
+                        }
+                    }
                 } else {
-                    debugLog("Couldn't find existing purchase for sku: ${upgradeInfo.oldSku}")
+                    val message = "There was an error trying to upgrade. " +
+                        "BillingResponseCode: ${result.responseCode.getBillingResponseCodeName()}"
+                    debugLog(message)
                     dispatch {
                         listener.onError(
-                            PurchasesError(PurchasesErrorCode.PurchaseInvalidError).also { errorLog(it) },
+                            result.responseCode.billingResponseToPurchasesError(message).also { errorLog(it) },
                             false
                         )
                     }
-                }
-            } else {
-                val message = "There was an error trying to upgrade. " +
-                    "BillingResponseCode: ${result.responseCode.getBillingResponseCodeName()}"
-                debugLog(message)
-                dispatch {
-                    listener.onError(
-                        result.responseCode.billingResponseToPurchasesError(message).also { errorLog(it) },
-                        false
-                    )
                 }
             }
         }
@@ -1599,8 +1630,10 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
                 }
             })
         } else {
-            debugLog("[QueryPurchases] Skipping updating pending purchase queue " +
-                "since BillingClient is not connected yet")
+            debugLog(
+                "[QueryPurchases] Skipping updating pending purchase queue " +
+                    "since BillingClient is not connected yet"
+            )
         }
     }
 
@@ -1740,22 +1773,26 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
                 )
                 val subscriberAttributesPoster = SubscriberAttributesPoster(backend)
 
-                var billing: BillingAbstract? = null
-                val billingWrapper = BillingWrapper(
-                    BillingWrapper.ClientFactory(application),
-                    Handler(application.mainLooper)
-                )
-                if (store == Store.PLAY_STORE) {
-
-                } else if (store == Store.AMAZON) {
-                    try {
-                        billing = Class.forName("com.revenuecat.purchases.amazon.AmazonBilling").newInstance() as BillingAbstract?
-                    } catch (e: ClassNotFoundException) {
-                        errorLog("Make sure purchases-amazon is added as dependency")
+                val billing: BillingAbstract = when (store) {
+                    Store.PLAY_STORE -> BillingWrapper(
+                        BillingWrapper.ClientFactory(application),
+                        Handler(application.mainLooper)
+                    )
+                    Store.AMAZON -> {
+                        try {
+                            Class.forName("com.revenuecat.purchases.amazon.AmazonBilling")
+                                .getConstructor(Context::class.java)
+                                .newInstance(application.applicationContext) as BillingAbstract
+                        } catch (e: ClassNotFoundException) {
+                            errorLog("Make sure purchases-amazon is added as dependency")
+                            throw e
+                        }
+                    }
+                    else -> {
+                        errorLog("Incompatible store ($store) used")
+                        throw RuntimeException("Couldn't configure SDK. Incompatible store ($store) used")
                     }
                 }
-
-
 
                 val prefs = PreferenceManager.getDefaultSharedPreferences(application)
                 val cache = DeviceCache(prefs, apiKey)
@@ -1765,7 +1802,7 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
                     application,
                     appUserID,
                     backend,
-                    billingWrapper,
+                    billing,
                     cache,
                     dispatcher,
                     IdentityManager(cache, subscriberAttributesCache, backend),

@@ -13,15 +13,19 @@ import com.android.billingclient.api.SkuDetails
 import com.revenuecat.purchases.PurchasesError
 import com.revenuecat.purchases.common.BillingAbstract
 import com.revenuecat.purchases.common.BillingWrapper
+import com.revenuecat.purchases.common.ProductInfo
 import com.revenuecat.purchases.common.PurchaseHistoryRecordWrapper
 import com.revenuecat.purchases.common.ReplaceSkuInfo
 
 class AmazonBilling(
     private val applicationContext: Context
-): BillingAbstract(), PurchasingListener {
+) : BillingAbstract(), PurchasingListener {
+
+    var connected = false
 
     override fun startConnection() {
         PurchasingService.registerListener(applicationContext, this)
+        connected = true
     }
 
     override fun endConnection() {
@@ -31,7 +35,6 @@ class AmazonBilling(
         onReceivePurchaseHistory: (List<PurchaseHistoryRecordWrapper>) -> Unit,
         onReceivePurchaseHistoryError: (PurchasesError) -> Unit
     ) {
-
     }
 
     override fun querySkuDetailsAsync(
@@ -68,23 +71,19 @@ class AmazonBilling(
     override fun makePurchaseAsync(
         activity: Activity,
         appUserID: String,
-        skuDetails: SkuDetails,
-        replaceSkuInfo: ReplaceSkuInfo?,
-        presentedOfferingIdentifier: String?
+        productInfo: ProductInfo,
+        replaceSkuInfo: ReplaceSkuInfo?
     ) {
-        PurchasingService.purchase(MySku.MY_MAGAZINE_SUBS.getSku())
+        PurchasingService.purchase(productInfo.productID)
     }
 
-    override fun isConnected(): Boolean {
-        TODO("not implemented")
-    }
+    override fun isConnected(): Boolean = connected
 
     override fun queryPurchases(skuType: String): BillingWrapper.QueryPurchasesResult? {
         TODO()
     }
 
     override fun onUserDataResponse(response: UserDataResponse?) {
-
     }
 
     override fun onProductDataResponse(response: ProductDataResponse?) {
