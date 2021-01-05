@@ -117,3 +117,4 @@ fastlane/report.xml
 /docs/*
 !/docs/index.html
 integration-tests/keystore
+**/jacoco.exec
