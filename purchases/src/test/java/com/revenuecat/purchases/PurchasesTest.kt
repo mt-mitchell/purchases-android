@@ -64,6 +64,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import java.lang.IllegalStateException
 import java.net.URL
 import java.util.ArrayList
 import java.util.Collections.emptyList
@@ -88,6 +89,7 @@ class PurchasesTest {
     }
     private val mockIdentityManager = mockk<IdentityManager>()
     private val mockSubscriberAttributesManager = mockk<SubscriberAttributesManager>()
+    private val testLifecycleRegister = TestThreadLifecycleRegister(owner = mockk(relaxed = true), isMainThread = true)
 
     private var capturedPurchasesUpdatedListener = slot<BillingWrapper.PurchasesUpdatedListener>()
     private var capturedBillingWrapperStateListener = slot<BillingWrapper.StateListener>()
@@ -4268,6 +4270,23 @@ class PurchasesTest {
         assertThat(receivedUserCancelled).isFalse()
     }
 
+    @Test(expected = IllegalStateException::class)
+    fun `when creating Purchases on a background thread, IllegalStateException is thrown`() {
+        setup()
+        val lifecycleRegister = TestThreadLifecycleRegister(mockk(relaxed = true), isMainThread = false)
+        buildPurchases(lifecycleRegister = lifecycleRegister)
+    }
+
+    @Test
+    fun `when creating Purchases on the mainThread, lifecycle owner addObserver is invoked`() {
+        setup()
+        val mockLifecycle = mockk<Lifecycle>(relaxed = true)
+        val lifecycleRegister = TestThreadLifecycleRegister(mockLifecycle, isMainThread = true)
+        buildPurchases(lifecycleRegister = lifecycleRegister)
+
+        verify(exactly = 1) { mockLifecycle.addObserver(any()) }
+    }
+
     private fun mockBackend(
         mockInfo: PurchaserInfo,
         errorGettingPurchaserInfo: PurchasesError? = null
@@ -4520,7 +4539,7 @@ class PurchasesTest {
         } returns queryPurchasesResultINAPP
     }
 
-    private fun buildPurchases(anonymous: Boolean = false) {
+    private fun buildPurchases(anonymous: Boolean = false, lifecycleRegister: TestThreadLifecycleRegister = testLifecycleRegister) {
         purchases = Purchases(
             mockApplication,
             if (anonymous) null else appUserId,
@@ -4535,7 +4554,8 @@ class PurchasesTest {
                 observerMode = false,
                 platformInfo = PlatformInfo("native", "3.2.0"),
                 proxyURL = null
-            )
+            ),
+            lifecycleRegister =  lifecycleRegister
         )
         Purchases.sharedInstance = purchases
         purchases.state = purchases.state.copy(appInBackground = false)

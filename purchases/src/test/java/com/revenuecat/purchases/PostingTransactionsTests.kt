@@ -123,7 +123,8 @@ class PostingTransactionsTests {
                     version = "3.2.0"
                 ),
                 proxyURL = null
-            )
+            ),
+            lifecycleRegister = mockk(relaxed = true)
         )
     }
 

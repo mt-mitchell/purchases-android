@@ -133,7 +133,8 @@ class SubscriberAttributesPurchasesTests {
                 observerMode = false,
                 platformInfo = PlatformInfo(flavor = "native", version = "3.2.0"),
                 proxyURL = null
-            )
+            ),
+            lifecycleRegister = mockk(relaxed = true)
         )
     }
 

@@ -97,7 +97,8 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
     private val dispatcher: Dispatcher,
     private val identityManager: IdentityManager,
     private val subscriberAttributesManager: SubscriberAttributesManager,
-    @JvmSynthetic internal var appConfig: AppConfig
+    @JvmSynthetic internal var appConfig: AppConfig,
+    lifecycleRegister: AppLifecycleRegister
 ) : LifecycleDelegate {
 
     /** @suppress */
@@ -166,7 +167,7 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
         log(LogIntent.DEBUG, ConfigureStrings.SDK_VERSION.format(frameworkVersion))
         log(LogIntent.USER, ConfigureStrings.INITIAL_APP_USER_ID.format(backingFieldAppUserID))
         identityManager.configure(backingFieldAppUserID)
-        ProcessLifecycleOwner.get().lifecycle.addObserver(lifecycleHandler)
+        lifecycleRegister.addObserver(lifecycleHandler)
         billingWrapper.stateListener = object : BillingWrapper.StateListener {
             override fun onConnected() {
                 updatePendingPurchaseQueue()
@@ -1734,6 +1735,7 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
             val cache = DeviceCache(prefs, apiKey)
             val subscriberAttributesCache = SubscriberAttributesCache(cache)
             val attributionFetcher = AttributionFetcher(dispatcher)
+            val lifecycleThreadHandler = MainThreadLifecycleRegister(ProcessLifecycleOwner.get().lifecycle)
 
             return Purchases(
                 application,
@@ -1744,7 +1746,8 @@ class Purchases @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE) intern
                 dispatcher,
                 IdentityManager(cache, subscriberAttributesCache, backend),
                 SubscriberAttributesManager(subscriberAttributesCache, subscriberAttributesPoster, attributionFetcher),
-                appConfig
+                appConfig,
+                lifecycleThreadHandler
             ).also { sharedInstance = it }
         }
 
